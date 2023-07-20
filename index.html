@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>Bootstrap, from Twitter</title>
+		<title>Ravin Menu</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta name="description" content="">
 		<meta name="author" content="">
@@ -111,24 +111,31 @@
 				<div class="span3">
 					<div class="well sidebar-nav">
 						<ul class="nav nav-list">
+              <li class="active"><a class="menu-itens" href="#" onclick="selecionarTodosItens(this)">Todos</a></li>
 							<li class="nav-header">Bebidas</li>
-							<li><a class="menu-itens" href="#" onclick="activeModel(this, 'chopps')">Chopp</a></li>
-							<li><a class="menu-itens" href="#" onclick="activeModel(this, 'refrigerantes')">Refrigerantes</a></li>
+							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'chopps')">Chopp</a></li>
+							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'refrigerantes')">Refrigerantes</a></li>
 							<li class="nav-header">Comidas</li>
-							<li><a class="menu-itens" href="#" onclick="activeModel(this, 'carnes')">Carnes</a></li>
-							<li><a class="menu-itens" href="#" onclick="activeModel(this, 'massas')">Massas</a></li>
+							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'carnes')">Carnes</a></li>
+							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'massas')">Massas</a></li>
 						</ul>
 					</div>
 				</div>
 
 				<div class="span9" style="height: 23vh;">
 					<div class="hero-unit">
-						<p><a class="btn" href="#" onclick="showLastItemOrder()">Mostrar último pedido</a></p>
-						<p><a class="btn" href="#" onclick="pegarItens()">PEGAR ITENS</a></p>
+            <div>
+              <p><a class="btn" href="#" onclick="showLastItemOrder()">Mostrar último pedido</a></p>
+            </div>
+            <div>
+              <h4>
+                R$ <span id="valor-total"></span>
+              </h4>
+            </div>
 					</div>
 				</div>
 
-				<div class="span9" style="height: 75vh; z-index: 999 !important; overflow: auto;">
+				<div class="span9" style="height: 75vh; overflow: auto; z-index: 999;">
 					<div class="row-fluid" id="main-container">
 					</div>
 				</div>
@@ -153,18 +160,15 @@
 	</body>
 	<script>
     
-    function pegarItens() {
-      const url = "http://ravin.localhost/server-itens.php";
-      // const url = "http://localhost:5500/ravin/server-itens.php";
-      fetch(url)
-        .then((dados) => { return dados.json(); })
-        .then((data) => { montarHtml(data) })
-      ;
-    }
+    const url = "http://ravin.localhost/server-itens.php";
+    fetch(url)
+      .then((dados) => { return dados.json() })
+      .then((data) => { montarHtml(data) })
+    ;
 
     function montarHtml(itensMenu) {
       const divInitial = document.getElementById("main-container");
-      var textHtml;
+      var textHtml = "";
       
       for (itemMenu of itensMenu) {
 
@@ -195,6 +199,7 @@
 
       salvarUltimoPedido(item);
       salvarHistoricoPedidos(item);
+      atualizarValorTotal(item);
     }
 
     function salvarUltimoPedido(pedido) {
@@ -209,6 +214,43 @@
       }
       historicoPedidos.itens.push(pedido);
       localStorage.setItem("orderHistory", JSON.stringify(historicoPedidos));
+    }
+
+    function filtrarItensMenu(elemento, categoria) {
+      removerClasseAtivo(elemento);
+      const itensMenu = document.getElementsByClassName("itens-menu");
+      for (itemMenu of itensMenu) {
+        if (itemMenu.getAttribute("data-category") === categoria) {
+          itemMenu.classList.remove("inactive");
+        } else {
+          itemMenu.classList.add("inactive");
+        }
+      }
+    }
+
+    function selecionarTodosItens(elemento) {
+      removerClasseAtivo(elemento);
+      const itensMenu = document.getElementsByClassName("itens-menu");
+      for (itemMenu of itensMenu) {
+        itemMenu.classList.remove("inactive");
+      }
+    }
+
+    function removerClasseAtivo(elemento) {
+      const elementosAtivos = document.getElementsByClassName("active");
+      for (elementoAtivo of elementosAtivos) {
+        elementoAtivo.classList.remove("active");
+      }
+      elemento.parentNode.classList.add("active");
+    }
+
+    function atualizarValorTotal(pedido) {
+      const htmlValorTotal = document.getElementById("valor-total");
+      var valorTotal = 0;
+      if (htmlValorTotal.textContent !== "") {
+        valorTotal = Number(htmlValorTotal.textContent.replace(",","."));
+      }
+      htmlValorTotal.textContent = (valorTotal + (pedido.quantidade * pedido.valor)).toFixed(2).replace(".",",");
     }
 	</script>
 </html>
