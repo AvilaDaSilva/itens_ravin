@@ -12,7 +12,7 @@
 		<style type="text/css">
 			.sidebar-nav {
 				padding: 9px 0;
-        height: 93vh;
+        		height: 93vh;
 			}
 
 			@media (max-width: 980px) {
@@ -59,6 +59,36 @@
 				}
 			}
 
+			.fade-in {
+				animation: fadeIn .5s;
+			}
+
+			.fade-out {
+				animation: fadeOut .5s;
+			}
+
+			@keyframes fadeIn {
+				from {
+					opacity: 0;
+					background-color: white;
+				}
+				to {
+					opacity: 1;
+					background-color: #8DC9D4;
+				}
+			}
+
+			@keyframes fadeOut {
+				from {
+					opacity: 1;
+					background-color: #8DC9D4;
+				}
+				to {
+					opacity: 0;
+					background-color: white;
+				}
+			}
+
 			.btns {
 				display: flex;
 				justify-content: space-between;
@@ -97,9 +127,9 @@
 				padding: 2%;
 				border-bottom: dashed 1px black;
 			}
-      .inactive {
-        display: none !important;
-      }
+			.inactive {
+				display: none !important;
+			}
 		</style>
 		<link href="assets/css/bootstrap-responsive.css" rel="stylesheet">
 	</head>
@@ -111,7 +141,7 @@
 				<div class="span3">
 					<div class="well sidebar-nav">
 						<ul class="nav nav-list">
-              <li class="active"><a class="menu-itens" href="#" onclick="selecionarTodosItens(this)">Todos</a></li>
+              				<li class="active"><a class="menu-itens" href="#" onclick="selecionarTodosItens(this)">Todos</a></li>
 							<li class="nav-header">Bebidas</li>
 							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'chopps')">Chopp</a></li>
 							<li><a class="menu-itens" href="#" onclick="filtrarItensMenu(this, 'refrigerantes')">Refrigerantes</a></li>
@@ -124,14 +154,24 @@
 
 				<div class="span9" style="height: 23vh;">
 					<div class="hero-unit">
-            <div>
-              <p><a class="btn" href="#" onclick="showLastItemOrder()">Mostrar último pedido</a></p>
-            </div>
-            <div>
-              <h4>
-                R$ <span id="valor-total"></span>
-              </h4>
-            </div>
+						<div style="width: 100%; text-align: center;">
+							<b><span>Mesa </span> <span id="mesa"></span></b>
+							<input type="text" id="nome-mesa" class="add-mesa">
+							<a style="margin-top: -10px;" class="btn add-mesa" href="#" onclick="cadastrarMesa()">Confirmar</a>
+							<b><span> - Status Pedido </span> <span id="status-pedido"></span></b>
+						</div>
+						<div style="width: 100%; display: flex;">
+							<div style="width: 50%;">
+								<h4>
+									Total da Mesa
+									<br>
+									R$ <span id="valor-total">0,00</span>
+								</h4>
+							</div>
+							<div style="width: 50%; padding: 10px;">
+								<p style="float: right;"><a class="btn" href="#" onclick="showLastItemOrder()">Mostrar último pedido</a></p>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -143,114 +183,194 @@
 
 			<div class="modal-container">
 				<div class="modal">
-					<h2>Info</h2>
-					<hr />
 					<div id="itens_pedidos"></div>
 					<hr />
 					<div class="btns">
-						<button class="btnOK" onclick="closeModal()">OK</button>
-						<button class="btnClose" onclick="closeModal()">Close</button>
+						<button class="btnOK" onclick="closeModal()">Pedir Novamente</button>
+						<button class="btnClose" onclick="closeModal()">Fechar</button>
 					</div>
 				</div>
 			</div>
 
 		</div>
-		
-		<script src="assets/js/jquery.js"></script>
 	</body>
 	<script>
-    
-    const url = "http://ravin.localhost/server-itens.php";
-    fetch(url)
-      .then((dados) => { return dados.json() })
-      .then((data) => { montarHtml(data) })
-    ;
+        var SOCKET_ON = false;
+        var SOCKET = new WebSocket("ws://localhost:3000");
+        SOCKET.onopen = (event) => {
+            SOCKET_ON = true;
+            console.log("SOCKET CONECTADO");
+        };
 
-    function montarHtml(itensMenu) {
-      const divInitial = document.getElementById("main-container");
-      var textHtml = "";
-      
-      for (itemMenu of itensMenu) {
+        setTimeout(function() {
+          verificarMesaCadastrada();
 
-        textHtml += `
-          <div class="span12 itens-menu" data-category="${itemMenu.categoria}">
-            <div class="span4 img">
-              <img src="imagens/${itemMenu.imagem}">
-            </div>
-            <div class="span8">
-              <h3>${itemMenu.nome}</h3>
-              <p>${itemMenu.descricao}</p>
-              <input type="number" name="qtd-${itemMenu.id}">
-              <p><a class="btn" href="#" onclick='fazerPedido(${JSON.stringify(itemMenu)})'>Fazer pedido</a></p>
-            </div>
-          </div>
-        `;
-      }
+          SOCKET.onmessage = (event) => {
+            doSocketActions(JSON.parse(event.data));
+          };
+        }, 500);
 
-      divInitial.innerHTML = textHtml;
-    }
+        const url = "http://ravin.localhost/server-itens.php";
+        fetch(url)
+            .then((dados) => { return dados.json() })
+            .then((data) => { montarHtml(data) })
+        ;
 
-    function fazerPedido(item) {
-      const itensByClassName = document.getElementsByName(`qtd-${item.id}`);
-      const qtdItem = itensByClassName[0].value;
-      item['quantidade'] = qtdItem;
-
-      //enviar pedido via web -> enviar como parâmetro
-
-      salvarUltimoPedido(item);
-      salvarHistoricoPedidos(item);
-      atualizarValorTotal(item);
-    }
-
-    function salvarUltimoPedido(pedido) {
-      localStorage.setItem("lastOrder", JSON.stringify(pedido));
-    }
-
-    function salvarHistoricoPedidos(pedido) {
-      if (localStorage.getItem("orderHistory") === null) {
-        historicoPedidos = {itens: []};
-      } else {
-        historicoPedidos = JSON.parse(localStorage.getItem("orderHistory"));
-      }
-      historicoPedidos.itens.push(pedido);
-      localStorage.setItem("orderHistory", JSON.stringify(historicoPedidos));
-    }
-
-    function filtrarItensMenu(elemento, categoria) {
-      removerClasseAtivo(elemento);
-      const itensMenu = document.getElementsByClassName("itens-menu");
-      for (itemMenu of itensMenu) {
-        if (itemMenu.getAttribute("data-category") === categoria) {
-          itemMenu.classList.remove("inactive");
-        } else {
-          itemMenu.classList.add("inactive");
+        function verificarMesaCadastrada() {
+            const nomeMesa = localStorage.getItem("tableName");
+            if (nomeMesa !== undefined && nomeMesa !== null && nomeMesa !== "null") {
+                const elementosMesa = document.getElementsByClassName("add-mesa");
+                for (elementoMesa of elementosMesa) {
+                    elementoMesa.classList.add("inactive");
+                    document.getElementById("mesa").textContent = nomeMesa;
+                }
+                doLoginSocket(nomeMesa);
+            }
         }
-      }
-    }
 
-    function selecionarTodosItens(elemento) {
-      removerClasseAtivo(elemento);
-      const itensMenu = document.getElementsByClassName("itens-menu");
-      for (itemMenu of itensMenu) {
-        itemMenu.classList.remove("inactive");
-      }
-    }
+        function doLoginSocket(nomeMesa) {
+            if (SOCKET_ON) {
+                SOCKET.send(`{"action":"login","params":{"table":"${nomeMesa}"}}`)
+            }
+        }
 
-    function removerClasseAtivo(elemento) {
-      const elementosAtivos = document.getElementsByClassName("active");
-      for (elementoAtivo of elementosAtivos) {
-        elementoAtivo.classList.remove("active");
-      }
-      elemento.parentNode.classList.add("active");
-    }
+        function cadastrarMesa() {
+            const nomeMesa = document.getElementById("nome-mesa").value;
+            localStorage.setItem("tableName", JSON.stringify(nomeMesa));
+            verificarMesaCadastrada();
+        }
 
-    function atualizarValorTotal(pedido) {
-      const htmlValorTotal = document.getElementById("valor-total");
-      var valorTotal = 0;
-      if (htmlValorTotal.textContent !== "") {
-        valorTotal = Number(htmlValorTotal.textContent.replace(",","."));
-      }
-      htmlValorTotal.textContent = (valorTotal + (pedido.quantidade * pedido.valor)).toFixed(2).replace(".",",");
-    }
+        function montarHtml(itensMenu) {
+            const divInitial = document.getElementById("main-container");
+            var textHtml = "";
+            
+            for (itemMenu of itensMenu) {
+
+                textHtml += `
+                <div class="span12 itens-menu" data-category="${itemMenu.categoria}">
+                    <div class="span4 img">
+                    <img src="imagens/${itemMenu.imagem}">
+                    </div>
+                    <div class="span8">
+                    <h3>${itemMenu.nome}</h3>
+                    <p>${itemMenu.descricao}</p>
+                    <input type="number" name="qtd-${itemMenu.id}">
+                    <p><a class="btn" href="#" onclick='fazerPedido(${JSON.stringify(itemMenu)}, this)'>Fazer pedido</a></p>
+                    </div>
+                </div>
+                `;
+            }
+
+            divInitial.innerHTML = textHtml;
+        }
+
+        function fazerPedido(item, elemento) {
+            destacarElemento(elemento, true);
+            const itensByClassName = document.getElementsByName(`qtd-${item.id}`);
+            const qtdItem = itensByClassName[0].value;
+            item['quantidade'] = qtdItem;
+            
+            let confirmValue = confirm(`Confirmar! \n Pedido de ${item.quantidade} - ${item.nome}`);
+
+            if (confirmValue === false) {
+                itensByClassName[0].value = "";
+                return false;
+            }
+
+            SOCKET.send(`{"action":"newOrder","params":{"table":"${localStorage.getItem('tableName')}", "item": "${item.id}", "value": "${item.valor}", "quantity": "${item.quantidade}"}}`);
+
+            salvarUltimoPedido(item);
+            salvarHistoricoPedidos(item);
+            atualizarValorTotal(item);
+            itensByClassName[0].value = "";
+            destacarElemento(elemento, false);
+        }
+
+        function destacarElemento(elementoFilho, abrindo) {
+            const elemento = elementoFilho.parentNode.parentNode.parentNode;
+            if (abrindo) {
+                elemento.classList.remove("fade-out");
+                elemento.classList.add("fade-in");
+            } else {
+                elemento.classList.remove("fade-in");
+                elemento.classList.add("fade-out");
+            }
+        }
+
+        function salvarUltimoPedido(pedido) {
+            localStorage.setItem("lastOrder", JSON.stringify(pedido));
+        }
+
+        function salvarHistoricoPedidos(pedido) {
+            if (localStorage.getItem("orderHistory") === null) {
+                historicoPedidos = {itens: []};
+            } else {
+                historicoPedidos = JSON.parse(localStorage.getItem("orderHistory"));
+            }
+            historicoPedidos.itens.push(pedido);
+            localStorage.setItem("orderHistory", JSON.stringify(historicoPedidos));
+        }
+
+        function filtrarItensMenu(elemento, categoria) {
+            removerClasseAtivo(elemento);
+            const itensMenu = document.getElementsByClassName("itens-menu");
+            for (itemMenu of itensMenu) {
+                if (itemMenu.getAttribute("data-category") === categoria) {
+                itemMenu.classList.remove("inactive");
+                } else {
+                itemMenu.classList.add("inactive");
+                }
+            }
+        }
+
+        function selecionarTodosItens(elemento) {
+            removerClasseAtivo(elemento);
+            const itensMenu = document.getElementsByClassName("itens-menu");
+            for (itemMenu of itensMenu) {
+                itemMenu.classList.remove("inactive");
+            }
+        }
+
+        function removerClasseAtivo(elemento) {
+            const elementosAtivos = document.getElementsByClassName("active");
+            for (elementoAtivo of elementosAtivos) {
+                elementoAtivo.classList.remove("active");
+            }
+            elemento.parentNode.classList.add("active");
+        }
+
+        function atualizarValorTotal(pedido) {
+            const htmlValorTotal = document.getElementById("valor-total");
+            var valorTotal = 0;
+            if (htmlValorTotal.textContent !== "") {
+                valorTotal = Number(htmlValorTotal.textContent.replace(",","."));
+            }
+            htmlValorTotal.textContent = (valorTotal + (pedido.quantidade * pedido.valor)).toFixed(2).replace(".",",");
+        }
+
+        function showLastItemOrder() {
+            const lastOrder = JSON.parse(localStorage.getItem("lastOrder"));
+            const htmlToShowLastOrder = `<h2>${lastOrder.nome}</h2><hr><p>Quantidade: ${lastOrder.quantidade}</p><p>${(lastOrder.quantidade * lastOrder.valor).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'})}</p>`;
+
+            console.log(lastOrder);
+
+            document.getElementById("itens_pedidos").innerHTML = htmlToShowLastOrder;
+            document.getElementsByClassName("modal-container")[0].classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementsByClassName("modal-container")[0].classList.remove('active');
+        }
+
+        function doSocketActions(event) {
+          switch (event.action) {
+            case 'loginAnswer':
+              alert("Mesa Online");
+              break;
+            case 'statusOrder':
+              document.getElementById("status-pedido").textContent = event.params.status;
+              break;
+          }
+        }
 	</script>
 </html>
